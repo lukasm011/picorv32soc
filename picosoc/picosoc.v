@@ -172,7 +172,23 @@ module picosoc (
 	wire [31 : 0] mem_axi_cpu_rdata;
 	wire [1 : 0] mem_axi_peri_bresp;
 	wire [1 : 0] mem_axi_peri_rresp;
-
+	wire mem_axi_flash_awvalid;
+	wire mem_axi_flash_awready;
+	wire [31 : 0] mem_axi_flash_awaddr;
+	wire [2 : 0] mem_axi_flash_awprot;
+	wire mem_axi_flash_wvalid;
+	wire mem_axi_flash_wready;
+	wire [31 : 0] mem_axi_flash_wdata;
+	wire [3 : 0] mem_axi_flash_wstrb;
+	wire mem_axi_flash_bvalid;
+	wire mem_axi_flash_bready;
+	wire mem_axi_flash_arvalid;
+	wire mem_axi_flash_arready;
+	wire [31 : 0] mem_axi_flash_araddr;
+	wire [2 : 0] mem_axi_flash_arprot;
+	wire mem_axi_flash_rvalid;
+	wire mem_axi_flash_rready;
+	wire [31 : 0] mem_axi_flash_rdata;
 	//wire spimem_ready;
 	//wire [31:0] spimem_axi_rdata;
 
@@ -242,7 +258,7 @@ module picosoc (
 
 	picosoc_dec #(
 		.mem_words(MEM_WORDS),
-		.addr_num(4)
+		.peri_words(4)
 	) picosoc_dec_instance (
 		.clk(clk),
 		.mem_axi_cpu_awvalid(mem_axi_cpu_awvalid),
@@ -295,7 +311,46 @@ module picosoc (
 		.mem_axi_peri_arprot(mem_axi_peri_arprot),
 		.mem_axi_peri_rvalid(mem_axi_peri_rvalid),
 		.mem_axi_peri_rready(mem_axi_peri_rready),
-		.mem_axi_peri_rdata(mem_axi_peri_rdata)
+		.mem_axi_peri_rdata(mem_axi_peri_rdata),
+		.mem_axi_flash_awvalid(mem_axi_flash_awvalid),
+		.mem_axi_flash_awready(mem_axi_flash_awready),
+		.mem_axi_flash_awaddr(mem_axi_flash_awaddr),
+		.mem_axi_flash_awprot(mem_axi_flash_awprot),
+		.mem_axi_flash_wvalid(mem_axi_flash_wvalid),
+		.mem_axi_flash_wready(mem_axi_flash_wready),
+		.mem_axi_flash_wdata(mem_axi_flash_wdata),
+		.mem_axi_flash_wstrb(mem_axi_flash_wstrb),
+		.mem_axi_flash_bvalid(mem_axi_flash_bvalid),
+		.mem_axi_flash_bready(mem_axi_flash_bready),
+		.mem_axi_flash_arvalid(mem_axi_flash_arvalid),
+		.mem_axi_flash_arready(mem_axi_flash_arready),
+		.mem_axi_flash_araddr(mem_axi_flash_araddr),
+		.mem_axi_flash_arprot(mem_axi_flash_arprot),
+		.mem_axi_flash_rvalid(mem_axi_flash_rvalid),
+		.mem_axi_flash_rready(mem_axi_flash_rready),
+		.mem_axi_flash_rdata(mem_axi_flash_rdata)
+	);
+
+	memunit memunit_instance (
+		.clk(clk),
+		.resetn(resetn),
+		.mem_axi_flash_awvalid(mem_axi_flash_awvalid),
+		.mem_axi_flash_awready(mem_axi_flash_awready),
+		.mem_axi_flash_awaddr(mem_axi_flash_awaddr),
+		.mem_axi_flash_awprot(mem_axi_flash_awprot),
+		.mem_axi_flash_wvalid(mem_axi_flash_wvalid),
+		.mem_axi_flash_wready(mem_axi_flash_wready),
+		.mem_axi_flash_wdata(mem_axi_flash_wdata),
+		.mem_axi_flash_wstrb(mem_axi_flash_wstrb),
+		.mem_axi_flash_bvalid(mem_axi_flash_bvalid),
+		.mem_axi_flash_bready(mem_axi_flash_bready),
+		.mem_axi_flash_arvalid(mem_axi_flash_arvalid),
+		.mem_axi_flash_arready(mem_axi_flash_arready),
+		.mem_axi_flash_araddr(mem_axi_flash_araddr),
+		.mem_axi_flash_arprot(mem_axi_flash_arprot),
+		.mem_axi_flash_rvalid(mem_axi_flash_rvalid),
+		.mem_axi_flash_rready(mem_axi_flash_rready),
+		.mem_axi_flash_rdata(mem_axi_flash_rdata)
 	);
 
 	/*spimemio spimemio (
@@ -397,6 +452,8 @@ module picosoc (
 		.rx_i(ser_rx)
 	);
     
+	
+
 	/*picosoc_mem #(
 	) dummy_peripheral_mem (
 		.clk(clk),
@@ -581,7 +638,7 @@ endmodule
 module picosoc_dec #(
     parameter integer mem_words = 256,
     parameter integer stackaddr = 4*mem_words,
-	parameter integer addr_num = 4
+	parameter integer peri_words = 4
 ) (
 		input clk,
 		//TO CPU
@@ -637,35 +694,60 @@ module picosoc_dec #(
 		output reg [2 : 0] mem_axi_peri_arprot,
 		input mem_axi_peri_rvalid,
 		output reg mem_axi_peri_rready,
-		input [31 : 0] mem_axi_peri_rdata
+		input [31 : 0] mem_axi_peri_rdata,
+		//TO FLASH
+		output reg mem_axi_flash_awvalid,
+		input mem_axi_flash_awready,
+		output reg [31 : 0] mem_axi_flash_awaddr,
+		output reg [2 : 0] mem_axi_flash_awprot,
+		output reg mem_axi_flash_wvalid,
+		input mem_axi_flash_wready,
+		output reg [31 : 0] mem_axi_flash_wdata,
+		output reg [3 : 0] mem_axi_flash_wstrb,
+		input mem_axi_flash_bvalid,
+		output reg mem_axi_flash_bready,
+		output reg mem_axi_flash_arvalid,
+		input mem_axi_flash_arready,
+		output reg [31 : 0] mem_axi_flash_araddr,
+		output reg [2 : 0] mem_axi_flash_arprot,
+		input mem_axi_flash_rvalid,
+		output reg mem_axi_flash_rready,
+		input [31 : 0] mem_axi_flash_rdata
 );
-	reg lock_peri, lock_ram;
+	reg lock_peri, lock_ram, lock_flash;
 	wire lock;
 	initial lock_peri = 0;
 	initial lock_ram = 0;
+	initial lock_flash = 0;
 	//routing for AXILite Read Bus
 	always @(posedge clk) begin
 		if(lock == 0) begin
 			//No lock applied, can take control
 			if(mem_axi_cpu_arvalid) begin
 				//write or read initiated
-				if(mem_axi_cpu_araddr > stackaddr - 1) begin
+				if(mem_axi_cpu_araddr > stackaddr - 1 && mem_axi_cpu_araddr < stackaddr + (peri_words + 1) * 4) begin
 					//route to peripherial and acquire lock
 					lock_peri <= 1;
 				end
 				else if(mem_axi_cpu_araddr < stackaddr) begin
                     //route to RAM and acquire lock
                     lock_ram <= 1;
+				end else if(mem_axi_cpu_araddr > stackaddr + (peri_words * 4) - 1) begin
+					//route to Flash and acquire lock
+					lock_flash <= 1;
 				end
 			end else if(mem_axi_cpu_awvalid) begin
 				//write or read initiated
-				if(mem_axi_cpu_awaddr > stackaddr - 1) begin
+				if(mem_axi_cpu_awaddr > stackaddr - 1 && mem_axi_cpu_awaddr < stackaddr + (peri_words + 1) * 4) begin
 					//route to peripherial and acquire lock
 					lock_peri <= 1;
 				end
 				else if(mem_axi_cpu_awaddr < stackaddr) begin
                     //route to RAM and acquire lock
                     lock_ram <= 1;
+				end else if(mem_axi_cpu_awaddr > stackaddr + (peri_words * 4) - 1) begin
+					//route to Flash and acquire lock
+					lock_flash <= 1;
 				end
 			end
 		end else begin
@@ -679,7 +761,12 @@ module picosoc_dec #(
                     //final clock cycle of transaction, can return lock
                     lock_peri <= 0;
                 end
-            end
+            end else if(lock_flash) begin
+				if((mem_axi_flash_bvalid & mem_axi_cpu_bready) | (mem_axi_flash_rvalid & mem_axi_cpu_rready)) begin
+					//final clock cycle of transaction, can return lock
+					lock_flash <= 0;
+				end
+			end
 		end
 	end
     always @(*) begin
@@ -731,6 +818,28 @@ module picosoc_dec #(
         //B Bus
         mem_axi_ram_bready = 0;
         mem_axi_cpu_bvalid = 0;
+		//AR Bus
+        mem_axi_flash_araddr = 0;
+        mem_axi_flash_arvalid = 0;
+        mem_axi_cpu_arready = 0;
+        mem_axi_flash_arprot = 0;
+        //R Bus
+        mem_axi_cpu_rvalid = 0;
+        mem_axi_cpu_rdata = 0;
+        mem_axi_flash_rready = 0;
+        //AW Bus
+        mem_axi_flash_awaddr = 0;
+        mem_axi_flash_awvalid = 0;
+        mem_axi_cpu_awready = 0;
+        mem_axi_flash_awprot = 0;
+        //W Bus
+        mem_axi_cpu_wready = 0;
+        mem_axi_flash_wdata = 0;
+        mem_axi_flash_wvalid = 0;
+        mem_axi_flash_wstrb = 0;
+        //B Bus
+        mem_axi_flash_bready = 0;
+        mem_axi_cpu_bvalid = 0;	
         if(lock_peri) begin
             //lock acquired by peripheral
             //AR Bus
@@ -779,7 +888,31 @@ module picosoc_dec #(
             //B Bus
             mem_axi_ram_bready = mem_axi_cpu_bready;
             mem_axi_cpu_bvalid = mem_axi_ram_bvalid;
+        end else if(lock_flash) begin
+            //lock acquired by flash
+            //AR Bus
+            mem_axi_flash_araddr = mem_axi_cpu_araddr - (stackaddr + (peri_words + 1) * 4);
+            mem_axi_flash_arvalid = mem_axi_cpu_arvalid;
+            mem_axi_cpu_arready = mem_axi_flash_arready;
+            mem_axi_flash_arprot = mem_axi_cpu_arprot;
+            //R Bus
+            mem_axi_cpu_rvalid = mem_axi_flash_rvalid;
+            mem_axi_cpu_rdata = mem_axi_flash_rdata;
+            mem_axi_flash_rready = mem_axi_cpu_rready;
+            //AW Bus
+            mem_axi_flash_awaddr = mem_axi_cpu_awaddr - (stackaddr + (peri_words + 1) * 4);
+            mem_axi_flash_awvalid = mem_axi_cpu_awvalid;
+            mem_axi_cpu_awready = mem_axi_flash_awready;
+            mem_axi_flash_awprot = mem_axi_cpu_awprot;
+            //W Bus
+            mem_axi_cpu_wready = mem_axi_flash_wready;
+            mem_axi_flash_wdata = mem_axi_cpu_wdata;
+            mem_axi_flash_wvalid = mem_axi_cpu_wvalid;
+            mem_axi_flash_wstrb = mem_axi_cpu_wstrb;
+            //B Bus
+            mem_axi_flash_bready = mem_axi_cpu_bready;
+            mem_axi_cpu_bvalid = mem_axi_flash_bvalid;
         end
     end
-	assign lock = lock_ram | lock_peri;
+	assign lock = lock_ram | lock_peri | lock_flash;
 endmodule
