@@ -121,13 +121,15 @@ module memcontrol #(
     output erase,
     output nvstr
 );
-    parameter DECODE = 0, LOAD = 1, RESP = 2;
-    reg [1 : 0] state_write;
+    parameter DECODE = 0, LOAD = 1, RESP = 2, ERASE_LOAD = 3, ERASE_RESP = 4;
+    parameter flash_words = 19_000;
+    reg [2 : 0] state_write;
     reg state_read;
     reg [29 : 0] addr_write;
     reg [29 : 0] addr_read;
     reg [bits(2 + (CLK_PER_US * (5 + 10 + 12 + 6000 + 5))) - 1 : 0] counter_write;
     reg [31 : 0] counter_read; //TODO: REPLACE PLACEHOLDER WIDTH WITH ACTUAL REQUIREMENT!
+    reg [31 : 0] counter_erase;//TODO: REPLACE PLACEHOLDER WIDTH WITH ACTUAL REQUIREMENT!
     reg [8 : 0] xadr_write;
     reg [5 : 0] yadr_write;
     reg [8 : 0] xadr_read;
@@ -146,6 +148,7 @@ module memcontrol #(
     reg nvstr_read;
     reg read_lock;
     reg write_lock;
+    reg [6 : 0] cmd_reg;
     wire lock;
     /**************************/
     /*      AXILite Write     */
@@ -168,6 +171,7 @@ module memcontrol #(
             prog_write <= 0;
             erase_write <= 1;
             counter_write <= 0;
+            cmd_reg <= 0;
         end else begin
             /* DEFAULT VALUES */
             //mem_axi_flash_
@@ -179,7 +183,12 @@ module memcontrol #(
                                 // Both valid and ready active, can transact
                                 write_lock <= 1;
                                 addr_write <= mem_axi_flash_awaddr[31 : 2];
-                                state_write <= LOAD;  
+                                if(mem_axi_flash_awaddr == flash_words * 4) begin
+                                    // End of flash is designated as control register
+                                    state_write <= ERASE_LOAD;
+                                end else begin
+                                    state_write <= LOAD;
+                                end  
                                 mem_axi_flash_awready <= 0;     
                             end 
                         end else begin
@@ -246,6 +255,63 @@ module memcontrol #(
                             end else begin
                                 mem_axi_flash_bvalid <= 1;
                             end
+                        end
+                        ERASE_LOAD: begin
+                            if(mem_axi_flash_wready) begin
+                                if(mem_axi_flash_wvalid) begin
+                                    mem_axi_flash_wready <= 0;
+                                    // TODO: REDUCE REGISTER SIZE TO ONLY HAVE REQUIRED BITS
+                                    cmd_reg <= mem_axi_flash_wdata[6 : 0];
+                                    xadr_write[8 : 3] <= mem_axi_flash_wdata[6 : 1];
+                                    counter_erase <= 0;
+                                end
+                            end else begin
+                                mem_axi_flash_wready <= 1;
+                            end
+                        end
+                        ERASE_RESP: begin
+                            counter_erase <= counter_erase + 1;
+                            case(counter_erase)
+                                0: begin
+                                    ye_write <= 0;
+                                    se_write <= 0;
+                                    nvstr_write <= 0;
+                                    xe <= 1;
+                                end
+                                1: begin
+                                    // Await Twpr (20 ns)
+                                    erase_write <= 1;
+                                end
+                                (1 + CLK_PER_US * (5)): begin
+                                    //Await Tnvs (5 us)
+                                    nvstr_write <= 1;
+                                end
+                                (1 + CLK_PER_US * (5 + 110_000)): begin
+                                    // Await Terase (100-120ms, 110 chosen)
+                                    erase_write <= 0;
+                                end
+                                (1 + CLK_PER_US * (5 + 110_000 + 5)): begin
+                                    // Await Tnvh (5 us)
+                                    nvstr_write <= 0;
+                                end
+                                (2 + CLK_PER_US * (5 + 110_000 + 5)): begin
+                                    // Await Twhd (>0 ns)
+                                    xe_write <= 0;
+                                    ye_write <= 1;
+                                end
+                                (1 + CLK_PER_US * (5 + 110_000 + 5 + 10)): begin
+                                    // Await Trcv (5 us)
+                                    counter_erase <= counter_erase;
+                                    if(mem_axi_flash_bvalid) begin
+                                        counter_erase <= 0;
+                                        write_lock <= 0;
+                                        mem_axi_flash_bvalid <= 0;
+                                        state_write <= DECODE;
+                                    end else begin
+                                        mem_axi_flash_bvalid <= 1;
+                                    end
+                                end
+                            endcase
                         end
                         default: //something goes here
                         begin end
