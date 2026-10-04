@@ -5,6 +5,8 @@
 #define UART_TX_I ((MEMWORDS + 1) * 4)
 #define UART_CONT ((MEMWORDS + 2) * 4)
 #define UART_STAT ((MEMWORDS + 3) * 4)
+#define FLASH_START ((MEMWORDS + 4) * 4)
+#define FLASH_END (FLASH_START + 19456) //ONLY VALID FOR GOWIN 608K Flash
 void uart_send(char* to_send);
 int uart_rx_isempty();
 int uart_tx_isfull();

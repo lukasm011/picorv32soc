@@ -475,7 +475,30 @@ module picosoc (
 		.mem_axi_ram_rvalid(mem_axi_peri_rvalid),
 		.mem_axi_ram_rready(mem_axi_peri_rready),
 		.mem_axi_ram_rdata(mem_axi_peri_rdata)
+	);
+	picosoc_mem #(
+	) dummy_flash_mem (
+		.clk(clk),
+		.resetn(resetn),
+		.mem_axi_ram_awvalid(mem_axi_flash_awvalid),
+		.mem_axi_ram_awready(mem_axi_flash_awready),
+		.mem_axi_ram_awaddr(mem_axi_flash_awaddr),
+		.mem_axi_ram_awprot(mem_axi_flash_awprot),
+		.mem_axi_ram_wvalid(mem_axi_flash_wvalid),
+		.mem_axi_ram_wready(mem_axi_flash_wready),
+		.mem_axi_ram_wdata(mem_axi_flash_wdata),
+		.mem_axi_ram_wstrb(mem_axi_flash_wstrb),
+		.mem_axi_ram_bvalid(mem_axi_flash_bvalid),
+		.mem_axi_ram_bready(mem_axi_flash_bready),
+		.mem_axi_ram_arvalid(mem_axi_flash_arvalid),
+		.mem_axi_ram_arready(mem_axi_flash_arready),
+		.mem_axi_ram_araddr(mem_axi_flash_araddr),
+		.mem_axi_ram_arprot(mem_axi_flash_arprot),
+		.mem_axi_ram_rvalid(mem_axi_flash_rvalid),
+		.mem_axi_ram_rready(mem_axi_flash_rready),
+		.mem_axi_ram_rdata(mem_axi_flash_rdata)
 	);*/
+
 endmodule
 
 // Implementation note:
@@ -725,7 +748,7 @@ module picosoc_dec #(
 			//No lock applied, can take control
 			if(mem_axi_cpu_arvalid) begin
 				//write or read initiated
-				if(mem_axi_cpu_araddr > stackaddr - 1 && mem_axi_cpu_araddr < stackaddr + (peri_words + 1) * 4) begin
+				if(mem_axi_cpu_araddr > stackaddr - 1 && mem_axi_cpu_araddr < stackaddr + peri_words * 4) begin
 					//route to peripherial and acquire lock
 					lock_peri <= 1;
 				end
@@ -738,7 +761,7 @@ module picosoc_dec #(
 				end
 			end else if(mem_axi_cpu_awvalid) begin
 				//write or read initiated
-				if(mem_axi_cpu_awaddr > stackaddr - 1 && mem_axi_cpu_awaddr < stackaddr + (peri_words + 1) * 4) begin
+				if(mem_axi_cpu_awaddr > stackaddr - 1 && mem_axi_cpu_awaddr < stackaddr + peri_words * 4) begin
 					//route to peripherial and acquire lock
 					lock_peri <= 1;
 				end
@@ -891,7 +914,7 @@ module picosoc_dec #(
         end else if(lock_flash) begin
             //lock acquired by flash
             //AR Bus
-            mem_axi_flash_araddr = mem_axi_cpu_araddr - (stackaddr + (peri_words + 1) * 4);
+            mem_axi_flash_araddr = mem_axi_cpu_araddr - (stackaddr + (peri_words) * 4);
             mem_axi_flash_arvalid = mem_axi_cpu_arvalid;
             mem_axi_cpu_arready = mem_axi_flash_arready;
             mem_axi_flash_arprot = mem_axi_cpu_arprot;
@@ -900,7 +923,7 @@ module picosoc_dec #(
             mem_axi_cpu_rdata = mem_axi_flash_rdata;
             mem_axi_flash_rready = mem_axi_cpu_rready;
             //AW Bus
-            mem_axi_flash_awaddr = mem_axi_cpu_awaddr - (stackaddr + (peri_words + 1) * 4);
+            mem_axi_flash_awaddr = mem_axi_cpu_awaddr - (stackaddr + (peri_words) * 4);
             mem_axi_flash_awvalid = mem_axi_cpu_awvalid;
             mem_axi_cpu_awready = mem_axi_flash_awready;
             mem_axi_flash_awprot = mem_axi_cpu_awprot;
