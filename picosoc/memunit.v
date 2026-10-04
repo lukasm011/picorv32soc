@@ -128,8 +128,8 @@ module memcontrol #(
     reg [29 : 0] addr_write;
     reg [29 : 0] addr_read;
     reg [bits(2 + (CLK_PER_US * (5 + 10 + 12 + 6000 + 5))) - 1 : 0] counter_write;
-    reg [31 : 0] counter_read; //TODO: REPLACE PLACEHOLDER WIDTH WITH ACTUAL REQUIREMENT!
-    reg [31 : 0] counter_erase;//TODO: REPLACE PLACEHOLDER WIDTH WITH ACTUAL REQUIREMENT!
+    reg [bits(4) - 1 : 0] counter_read; 
+    reg [bits(1 + CLK_PER_US * (5 + 110_000 + 5 + 10)) - 1 : 0] counter_erase;
     reg [8 : 0] xadr_write;
     reg [5 : 0] yadr_write;
     reg [8 : 0] xadr_read;
@@ -148,7 +148,6 @@ module memcontrol #(
     reg nvstr_read;
     reg read_lock;
     reg write_lock;
-    reg [6 : 0] cmd_reg;
     wire lock;
     /**************************/
     /*      AXILite Write     */
@@ -171,11 +170,8 @@ module memcontrol #(
             prog_write <= 0;
             erase_write <= 1;
             counter_write <= 0;
-            cmd_reg <= 0;
             counter_erase <= 0;
         end else begin
-            /* DEFAULT VALUES */
-            //mem_axi_flash_
             casex(state_write)
                 DECODE: begin
                     if(~lock) begin
@@ -265,10 +261,9 @@ module memcontrol #(
                     if(mem_axi_flash_wready) begin
                         if(mem_axi_flash_wvalid) begin
                             mem_axi_flash_wready <= 0;
-                            // TODO: REDUCE REGISTER SIZE TO ONLY HAVE REQUIRED BITS
                             state_write <= ERASE_RESP;
-                            cmd_reg <= mem_axi_flash_wdata[6 : 0];
-                            xadr_write[8 : 3] <= mem_axi_flash_wdata[6 : 1];
+                            mem_axi_flash_bvalid <= 1;
+                            xadr_write[8 : 3] <= mem_axi_flash_wdata[5 : 0];
                             counter_erase <= 0;
                         end
                     end else begin
@@ -282,9 +277,6 @@ module memcontrol #(
                             // End transaction and continue erasure
                             mem_axi_flash_bvalid <= 0;
                         end
-                    end else if(counter_erase == 0) begin
-                        //Only toggle bvalid on first pass
-                        mem_axi_flash_bvalid <= 1;
                     end
                     case(counter_erase)
                         0: begin
